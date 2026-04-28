@@ -4,7 +4,16 @@ import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-RUNTIME_ROOT = Path(os.getenv("LT_RUNTIME_ROOT", PROJECT_ROOT / ".runtime")).resolve()
+
+
+def _default_runtime_root() -> Path:
+    if os.getenv("VERCEL"):
+        # Vercel functions expose only /tmp as writable storage.
+        return Path("/tmp/ru-en-translation-service")
+    return PROJECT_ROOT / ".runtime"
+
+
+RUNTIME_ROOT = Path(os.getenv("LT_RUNTIME_ROOT", _default_runtime_root())).resolve()
 ARGOS_ROOT = RUNTIME_ROOT / "argos"
 XDG_DATA_HOME = ARGOS_ROOT / "xdg-data"
 XDG_CACHE_HOME = ARGOS_ROOT / "xdg-cache"

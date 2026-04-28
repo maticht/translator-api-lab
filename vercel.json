@@ -1,4 +1,3 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "python scripts/prepare_runtime.py"
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }
