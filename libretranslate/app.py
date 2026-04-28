@@ -23,7 +23,7 @@ from werkzeug.http import http_date
 from werkzeug.utils import secure_filename
 
 from libretranslate import flood, remove_translated_files, scheduler, secret, security, storage, cache
-from libretranslate.language import model2iso, iso2model, detect_languages, improve_translation_formatting, get_language_with_fallback
+from libretranslate.language import model2iso, iso2model, detect_languages, fast_guess_language, improve_translation_formatting, get_language_with_fallback
 from libretranslate.locales import (
     _,
     _lazy,
@@ -792,8 +792,12 @@ def create_app(args):
         translatable = detect_translatable(src_texts)
         if translatable:
           if source_lang == "auto":
-              candidate_langs = detect_languages(src_texts)
-              detected_src_lang = candidate_langs[0]
+              detected_src_lang = fast_guess_language(
+                  src_texts, [lang.code for lang in languages]
+              )
+              if detected_src_lang is None:
+                  candidate_langs = detect_languages(src_texts)
+                  detected_src_lang = candidate_langs[0]
               src_lang = get_language_with_fallback(detected_src_lang["language"], languages)
           else:
               detected_src_lang = {"confidence": 100.0, "language": source_lang}
@@ -1141,6 +1145,10 @@ def create_app(args):
 
         if not q:
             abort(400, description=_("Invalid request: missing %(name)s parameter", name='q'))
+
+        fast_detected = fast_guess_language(q, [lang.code for lang in languages])
+        if fast_detected is not None:
+            return jsonify(model2iso([fast_detected]))
 
         return jsonify(model2iso(detect_languages(q)))
 

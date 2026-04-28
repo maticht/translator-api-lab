@@ -13,6 +13,49 @@ aliases = {
 }
 rev_aliases = {v.lower(): k for k, v in aliases.items()}
 
+
+def _iter_texts(text):
+    if isinstance(text, list):
+        return text
+    return [text]
+
+
+def fast_guess_language(text, allowed_lang_codes=None):
+    if allowed_lang_codes is not None:
+        allowed = {code.lower() for code in allowed_lang_codes}
+        if not {"en", "ru"}.issubset(allowed):
+            return None
+
+    latin_count = 0
+    cyrillic_count = 0
+
+    for chunk in _iter_texts(text):
+        if not isinstance(chunk, str):
+            continue
+
+        for ch in chunk:
+            codepoint = ord(ch)
+
+            if 0x0041 <= codepoint <= 0x007A or 0x00C0 <= codepoint <= 0x024F:
+                latin_count += 1
+            elif 0x0400 <= codepoint <= 0x052F or 0x2DE0 <= codepoint <= 0x2DFF or 0xA640 <= codepoint <= 0xA69F:
+                cyrillic_count += 1
+
+    total = latin_count + cyrillic_count
+    if total == 0:
+        return None
+
+    if cyrillic_count > latin_count:
+        return {
+            "language": "ru",
+            "confidence": round((cyrillic_count / total) * 100, 2),
+        }
+
+    return {
+        "language": "en",
+        "confidence": round((latin_count / total) * 100, 2),
+    }
+
 def iso2model(lang):
     if isinstance(lang, list):
         return [iso2model(l) for l in lang]
@@ -179,4 +222,3 @@ def improve_translation_formatting(source, translation, improve_punctuation=True
         return translation[0].upper() + translation[1:]
 
     return translation
-

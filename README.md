@@ -116,6 +116,22 @@ Expected response shape:
 }
 ```
 
+## Faster Client Requests
+
+For the fastest requests from a client application:
+
+- send `source: "ru"` or `source: "en"` whenever the client can infer it
+- avoid `alternatives` unless you really need them
+- keep `format: "text"` for normal text input
+
+This repository includes a tiny client-side helper at:
+
+```text
+examples/optimized_translate.js
+```
+
+It detects Cyrillic vs Latin text before calling `/translate`, so the client can often avoid server-side `source=auto` detection.
+
 ### `POST /detect`
 
 ```json
