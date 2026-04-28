@@ -1,28 +1,185 @@
-# LibreTranslate
+# ru-en-translation-service
 
-[Try it online!](https://libretranslate.com) | [API Docs](https://docs.libretranslate.com) | [Community Forum](https://community.libretranslate.com/) | [Bluesky](https://bsky.app/profile/libretranslate.com)
+Standalone self-hosted `Russian <-> English` translation API based on [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate).
 
-[![Python versions](https://img.shields.io/pypi/pyversions/libretranslate)](https://pypi.org/project/libretranslate) [![Run tests](https://github.com/LibreTranslate/LibreTranslate/workflows/Run%20tests/badge.svg)](https://github.com/LibreTranslate/LibreTranslate/actions?query=workflow%3A%22Run+tests%22) [![Build and Publish Docker Image](https://github.com/LibreTranslate/LibreTranslate/actions/workflows/publish-docker.yml/badge.svg)](https://github.com/LibreTranslate/LibreTranslate/actions/workflows/publish-docker.yml) [![Publish package](https://github.com/LibreTranslate/LibreTranslate/actions/workflows/publish-package.yml/badge.svg)](https://github.com/LibreTranslate/LibreTranslate/actions/workflows/publish-package.yml) [![Awesome Humane Tech](https://raw.githubusercontent.com/humanetech-community/awesome-humane-tech/main/humane-tech-badge.svg?sanitize=true)](https://codeberg.org/teaserbot-labs/delightful-humane-design)
+This repository keeps the upstream LibreTranslate codebase and adds a thin service adapter for the following goals:
 
-Free and Open Source Machine Translation API, entirely self-hosted. Unlike other APIs, it doesn't rely on proprietary software such as Google or Azure to perform translations. Instead, its translation engine is powered by the open source [Argos Translate](https://github.com/argosopentech/argos-translate) library.
+- support only `en` and `ru`
+- run as an independent HTTP API
+- stay easy to deploy as its own project
+- work with `Vercel` as a separate deployable service
 
-![Translation](https://github.com/user-attachments/assets/457696b5-dbff-40ab-a18e-7bfb152c5121)
+## What This Service Supports
 
-## Getting Started
+- `POST /translate`
+- `POST /detect`
+- `GET /languages`
+- `GET /health`
+- `source=auto`
+- short text translation for `en -> ru` and `ru -> en`
 
-- [Quickstart](https://docs.libretranslate.com/)
-- [Usage Instructions](https://docs.libretranslate.com/guides/api_usage/)
-- [Community Resources](https://docs.libretranslate.com/community/resources/)
+## What Is Restricted
 
-## Credits
+- only `en` and `ru` language models are loaded
+- file translation is disabled by default
+- web UI is disabled by default
 
-This work is largely possible thanks to [Argos Translate](https://github.com/argosopentech/argos-translate), which powers the translation engine.
+The language restriction is enforced by the service adapter with the equivalent of:
+
+```bash
+libretranslate --load-only en,ru
+```
+
+## Local Run
+
+### 1. Install dependencies
+
+```bash
+pip install -e .
+```
+
+### 2. Download only the required models
+
+```bash
+python scripts/prepare_runtime.py
+```
+
+### 3. Start the service
+
+```bash
+python main.py
+```
+
+By default the service starts on `0.0.0.0:5000`.
+
+## Runtime Storage
+
+Translation models and Argos runtime data are stored inside the project under:
+
+```text
+.runtime/argos/
+```
+
+This keeps the deployment self-contained and makes it easier to prepare the runtime during a Vercel build.
+
+## Important Environment Variables
+
+### Service defaults
+
+- `PORT`: runtime port override
+- `LT_SERVICE_HOST`: host override. Default: `0.0.0.0`
+- `LT_SERVICE_LOAD_ONLY`: comma-separated languages. Default: `en,ru`
+
+### LibreTranslate / service behavior
+
+- `LT_DISABLE_WEB_UI`: default `true`
+- `LT_DISABLE_FILES_TRANSLATION`: default `true`
+- `LT_UPDATE_MODELS`: optional `true` to refresh models on startup
+- `LT_API_KEYS`: optional LibreTranslate API key mode
+- `LT_REQ_LIMIT`: optional per-minute rate limit
+- `LT_CHAR_LIMIT`: optional request character limit
+
+### Argos runtime paths
+
+- `LT_RUNTIME_ROOT`: overrides the local runtime directory used by this adapter
+
+## API Examples
+
+### `GET /languages`
+
+Expected response shape:
+
+```json
+[
+  {
+    "code": "en",
+    "name": "English",
+    "targets": ["ru"]
+  },
+  {
+    "code": "ru",
+    "name": "Russian",
+    "targets": ["en"]
+  }
+]
+```
+
+### `POST /translate`
+
+```json
+{
+  "q": "books",
+  "source": "en",
+  "target": "ru",
+  "format": "text",
+  "alternatives": 2
+}
+```
+
+### `POST /detect`
+
+```json
+{
+  "q": "The article was written by our editor."
+}
+```
+
+### `GET /health`
+
+Upstream LibreTranslate already exposes:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+## Deploying To Vercel
+
+This repository includes:
+
+- root `app.py` Flask entrypoint for Vercel
+- `vercel.json` with a build step
+- `scripts/prepare_runtime.py` to preinstall only `en` and `ru` models into project-local storage
+
+### Recommended deploy flow
+
+1. Push this repository to your own GitHub repo, for example `ru-en-translation-service`.
+2. Import that repo into Vercel.
+3. Let Vercel run the configured build step.
+4. Deploy.
+
+### Notes about Vercel
+
+- This service runs as a Python function on Vercel.
+- Cold starts are possible.
+- Translation models are relatively large, so bundle size and startup time matter.
+- Vercel is acceptable for this MVP, but it is not the best fit for high-load, low-latency production translation workloads.
+
+## Repository Shape
+
+Key files added for the standalone service:
+
+```text
+app.py
+service_config.py
+scripts/prepare_runtime.py
+vercel.json
+```
+
+The upstream LibreTranslate application code remains in:
+
+```text
+libretranslate/
+```
+
+## Upstream Base
+
+- Upstream repository: https://github.com/LibreTranslate/LibreTranslate
+- LibreTranslate docs: https://docs.libretranslate.com/
+- Installation guide: https://docs.libretranslate.com/guides/installation/
+- API usage: https://docs.libretranslate.com/guides/api_usage/
 
 ## License
 
-[GNU Affero General Public License v3](https://www.gnu.org/licenses/agpl-3.0.en.html)
-
-## Trademark
-
-See [Trademark Guidelines](https://github.com/LibreTranslate/LibreTranslate/blob/main/TRADEMARK.md)
-
+This repository remains based on LibreTranslate and therefore keeps its upstream licensing obligations. Review [LICENSE](LICENSE) before publishing or deploying.
