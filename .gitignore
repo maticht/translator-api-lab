@@ -130,6 +130,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 installed_models/
+.runtime/
 
 # Misc
 api_keys.db

@@ -63,6 +63,7 @@ dependencies = [
 [project.scripts]
 libretranslate = "libretranslate.main:main"
 ltmanage = "libretranslate.manage:manage"
+ru-en-translation-service = "app:main"
 
 
 [project.optional-dependencies]
